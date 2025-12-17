@@ -87,6 +87,7 @@ export default function App(){
           </div>
           <div className="actions">
             <button onClick={connectFacebook}>Connect Facebook</button>
+            <button className="ghost" onClick={()=> window.location.href = `${backend}/auth/tiktok`}>Connect TikTok</button>
             <button className="ghost" onClick={fetchAccounts}>Refresh</button>
           </div>
         </div>

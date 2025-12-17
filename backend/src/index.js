@@ -34,6 +34,7 @@ const storage = multer.diskStorage({
   filename: function (req, file, cb) { const unique = Date.now() + '-' + Math.random().toString(36).slice(2,8); cb(null, unique + '-' + file.originalname); }
 });
 const upload = multer({ storage });
+const FormData = require('form-data');
 
 const db = new sqlite3.Database(DB_PATH);
 
@@ -68,6 +69,52 @@ app.get('/auth/facebook', (req, res) => {
   const scope = 'pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content,public_profile';
   const url = `https://www.facebook.com/v17.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirect)}&scope=${encodeURIComponent(scope)}&response_type=code`;
   res.redirect(url);
+});
+
+// Start TikTok OAuth flow (configurable endpoints)
+app.get('/auth/tiktok', (req, res) => {
+  const clientKey = process.env.TT_CLIENT_KEY;
+  const redirect = `${process.env.BACKEND_URL || 'http://localhost:4000'}/auth/tiktok/callback`;
+  const scope = process.env.TT_SCOPES || 'video.upload,video.publish';
+  const authUrl = process.env.TT_AUTH_URL || 'https://open.tiktokapis.com/v1/oauth/authorize';
+  const url = `${authUrl}?client_key=${clientKey}&redirect_uri=${encodeURIComponent(redirect)}&scope=${encodeURIComponent(scope)}&response_type=code`;
+  res.redirect(url);
+});
+
+// TikTok OAuth callback
+app.get('/auth/tiktok/callback', async (req, res) => {
+  const { code } = req.query;
+  const clientKey = process.env.TT_CLIENT_KEY;
+  const clientSecret = process.env.TT_CLIENT_SECRET;
+  const redirect = `${process.env.BACKEND_URL || 'http://localhost:4000'}/auth/tiktok/callback`;
+  const tokenUrl = process.env.TT_TOKEN_URL || 'https://open.tiktokapis.com/v1/oauth/token';
+  try {
+    // Exchange code for token
+    const tokenRes = await axios.post(tokenUrl, {
+      client_key: clientKey,
+      client_secret: clientSecret,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: redirect
+    });
+    const data = tokenRes.data || {};
+    const access_token = data.access_token || data.data && data.data.access_token;
+    const refresh_token = data.refresh_token || data.data && data.data.refresh_token;
+    const open_id = data.open_id || data.data && data.data.open_id || data.data && data.data.open_id;
+
+    if (!access_token) {
+      console.error('TikTok token response', data);
+      return res.status(500).send('TikTok OAuth failed');
+    }
+
+    // store tiktok user
+    db.run(`INSERT INTO accounts (provider, provider_user_id, access_token, refresh_token, display_name) VALUES (?,?,?,?,?)`, ['tiktok_user', open_id || 'unknown', access_token, refresh_token, null]);
+
+    res.redirect(process.env.FRONTEND_URL || FRONTEND_URL);
+  } catch (err) {
+    console.error('TikTok callback error', err?.response?.data || err.message);
+    res.status(500).send('TikTok OAuth error');
+  }
 });
 
 // Return a public URL (prefer ngrok) so frontend can build file URLs automatically
@@ -215,17 +262,59 @@ app.post('/posts', async (req, res) => {
     if (!row) return res.status(404).json({ error: 'account not found' });
 
     try {
-      // Post to the page ID using the stored token (for pages use /{page_id}/videos)
-      const pageId = row.provider_user_id;
-      const params = new URLSearchParams();
-      params.append('file_url', file_url);
-      if (message) params.append('description', message);
-      params.append('access_token', row.access_token);
+      if (row.provider && row.provider.startsWith('facebook')) {
+        // Post to the page ID using the stored token (for pages use /{page_id}/videos)
+        const pageId = row.provider_user_id;
+        const params = new URLSearchParams();
+        params.append('file_url', file_url);
+        if (message) params.append('description', message);
+        params.append('access_token', row.access_token);
 
-      const fbRes = await axios.post(`https://graph.facebook.com/v17.0/${pageId}/videos`, params);
-      res.json({ success: true, result: fbRes.data });
+        const fbRes = await axios.post(`https://graph.facebook.com/v17.0/${pageId}/videos`, params);
+        return res.json({ success: true, result: fbRes.data });
+      }
+
+      if (row.provider && row.provider.startsWith('tiktok')) {
+        // TikTok posting flow (generic / configurable via env vars)
+        // Steps: upload media to TikTok upload endpoint, then create/publish video
+        const ttUploadUrl = process.env.TT_UPLOAD_URL; // endpoint to POST file multipart
+        const ttCreateVideoUrl = process.env.TT_CREATE_VIDEO_URL; // endpoint to finalize/create video
+        const accessToken = row.access_token;
+
+        if (!ttUploadUrl || !ttCreateVideoUrl) return res.status(500).json({ error: 'TikTok endpoints not configured (TT_UPLOAD_URL, TT_CREATE_VIDEO_URL)' });
+
+        // fetch file stream
+        const fileResp = await axios.get(file_url, { responseType: 'stream' });
+
+        const form = new FormData();
+        form.append('video', fileResp.data, { filename: path.basename(file_url) });
+
+        const uploadRes = await axios.post(ttUploadUrl, form, {
+          headers: {
+            ...form.getHeaders(),
+            Authorization: `Bearer ${accessToken}`
+          },
+          maxBodyLength: Infinity
+        });
+
+        // Expecting uploadRes.data to include an upload_id or similar identifier
+        const uploadId = uploadRes.data && (uploadRes.data.upload_id || uploadRes.data.data && (uploadRes.data.data.upload_id || uploadRes.data.data.video_id));
+
+        if (!uploadId) {
+          return res.status(500).json({ error: 'TikTok upload did not return upload id', raw: uploadRes.data });
+        }
+
+        // finalize / create the video
+        const createRes = await axios.post(ttCreateVideoUrl, { upload_id: uploadId, text: message || '' }, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        return res.json({ success: true, result: createRes.data });
+      }
+
+      return res.status(400).json({ error: 'Unsupported provider for posting' });
     } catch (err) {
-      console.error('Error posting to FB', err?.response?.data || err.message);
+      console.error('Error posting', err?.response?.data || err.message);
       return res.status(500).json({ error: err?.response?.data || err.message });
     }
   });
