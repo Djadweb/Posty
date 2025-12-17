@@ -1,0 +1,133 @@
+:root {
+  --bg: #f7f7fb;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --radius: 10px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family:
+    Inter,
+    system-ui,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: #0f172a;
+}
+.container {
+  max-width: 960px;
+  margin: 28px auto;
+  padding: 20px;
+}
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.col {
+  flex: 1;
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+input[type="text"],
+input[type="file"],
+select,
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e6e9ef;
+  border-radius: 8px;
+}
+button {
+  background: var(--accent);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+}
+button.ghost {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+}
+.small {
+  font-size: 13px;
+  color: var(--muted);
+}
+.accounts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.accounts-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed #f1f5f9;
+}
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.notice {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+}
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.08);
+}
+.selected-account {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.progress {
+  height: 10px;
+  background: #e6eefc;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #7c3aed);
+  width: 0%;
+}

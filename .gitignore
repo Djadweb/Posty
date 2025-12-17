@@ -1,0 +1,33 @@
+# Node
+node_modules/
+**/node_modules/
+
+# Environment
+.env
+.env.*
+
+# Build outputs
+dist/
+build/
+/.vite
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Database and uploads
+/backend/data/
+/backend/public/uploads/
+*.sqlite
+
+# Misc
+.ngrok2/
+.cache/
+coverage/
