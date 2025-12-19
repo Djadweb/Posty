@@ -77,6 +77,20 @@ export default function App(){
     fetchAccountDetails()
   },[selected])
 
+  // Disconnect Facebook handler
+  async function disconnectFacebook() {
+    if (!window.confirm('Disconnect Facebook account and remove all pages?')) return;
+    try {
+      await axios.post(`${backend}/facebook/disconnect`);
+      await fetchAccounts();
+      setSelected(null);
+      setAccountDetails(null);
+      alert('Facebook account disconnected.');
+    } catch (e) {
+      alert('Failed to disconnect Facebook: ' + (e?.response?.data?.error || e.message));
+    }
+  }
+
   return (
     <div className="container">
       <div className="card">
@@ -89,6 +103,7 @@ export default function App(){
             <button onClick={connectFacebook}>Connect Facebook</button>
             <button className="ghost" onClick={()=> window.location.href = `${backend}/auth/tiktok`}>Connect TikTok</button>
             <button className="ghost" onClick={fetchAccounts}>Refresh</button>
+            <button className="ghost" style={{color:'#e11d48',borderColor:'#e11d48'}} onClick={disconnectFacebook}>Disconnect Facebook</button>
           </div>
         </div>
       </div>

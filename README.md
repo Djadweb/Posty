@@ -115,6 +115,42 @@ Notes:
 - To test Facebook flows locally, run ngrok and use the HTTPS tunnel as your `BACKEND_URL` and in the Facebook Redirect URIs.
 - To reset stored accounts, delete `backend/data/posty.db` (or remove rows via sqlite3).
 
+## Development Workflow (ngrok + backend)
+
+**1. Start the backend (default port 4000):**
+```bash
+cd backend
+yarn run dev
+```
+
+**2. Start ngrok on the same port as your backend:**
+```bash
+ngrok http 4000
+```
+- Make sure the forwarding URL in ngrok (e.g. `https://xxxx.ngrok-free.dev`) is used in your `.env` as `BACKEND_URL` and (optionally) `PUBLIC_URL`.
+- If you restart ngrok, update your `.env` and restart the backend if the URL changes.
+
+**3. Start the frontend:**
+```bash
+cd ../frontend
+yarn run dev
+```
+
+**4. Test file uploads:**
+- Upload a file in the UI.
+- Open the resulting public URL (should start with your ngrok URL) in an incognito window to confirm it is accessible.
+
+**5. Troubleshooting:**
+- If you get 502 Bad Gateway from ngrok, make sure ngrok is forwarding to the correct backend port (4000).
+- Always match the ngrok port to your backend port.
+- If Facebook cannot fetch your file, check the public URL in a private browser and with `curl -I <url>`.
+
+**Quick checklist:**
+- [ ] Backend running on 4000
+- [ ] ngrok running on 4000
+- [ ] .env BACKEND_URL matches ngrok URL
+- [ ] File URLs are public and accessible
+
 ## Files of interest
 - Backend: [backend/src/index.js](backend/src/index.js)
 - Frontend: [frontend/src/App.jsx](frontend/src/App.jsx)
